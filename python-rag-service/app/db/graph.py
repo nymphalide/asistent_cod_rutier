@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class Neo4jRepository:
     """
     Repository Pattern: Translates Pydantic domain models into Neo4j graph structures.
-    Uses strict Dependency Injection for the driver to remain infrastructure-agnostic. [cite: 15]
+    Uses strict Dependency Injection for the driver to remain infrastructure-agnostic.
     """
 
     def __init__(self, driver: AsyncDriver):
@@ -24,7 +24,8 @@ class Neo4jRepository:
         queries = [
             "CREATE CONSTRAINT law_unit_id IF NOT EXISTS FOR (n:LawUnit) REQUIRE n.id IS UNIQUE",
             "CREATE CONSTRAINT concept_name IF NOT EXISTS FOR (n:Concept) REQUIRE n.name IS UNIQUE",
-            "CREATE CONSTRAINT category_name IF NOT EXISTS FOR (n:Category) REQUIRE n.name IS UNIQUE"
+            "CREATE CONSTRAINT category_name IF NOT EXISTS FOR (n:Category) REQUIRE n.name IS UNIQUE",
+            "CREATE CONSTRAINT external_law_id IF NOT EXISTS FOR (n:ExternalLawNode) REQUIRE n.id IS UNIQUE"
         ]
 
         async with self.driver.session() as session:
@@ -42,7 +43,6 @@ class Neo4jRepository:
         """
         async with self.driver.session() as session:
             try:
-                # We pass the transaction object to the private helper methods
                 await session.execute_write(self._execute_batch_upsert, payload)
             except Exception as e:
                 logger.error(f"Neo4j Transaction Failed. Rolled back payload. Error: {e}")
@@ -63,6 +63,9 @@ class Neo4jRepository:
         if payload.categories:
             await self._upsert_categories(tx, [c.model_dump() for c in payload.categories])
 
+        if payload.external_laws:
+            await self._upsert_external_laws(tx, [n.model_dump() for n in payload.external_laws])
+
         # 2. UPSERT EDGES
         if payload.reference_edges:
             await self._upsert_reference_edges(tx, [e.model_dump() for e in payload.reference_edges])
@@ -75,6 +78,9 @@ class Neo4jRepository:
 
         if payload.belongs_to_edges:
             await self._upsert_belongs_to_edges(tx, [e.model_dump() for e in payload.belongs_to_edges])
+
+        if payload.refers_to_external_edges:
+            await self._upsert_refers_to_external_edges(tx, [e.model_dump() for e in payload.refers_to_external_edges])
 
     # ==========================================
     # PRIVATE CYPHER QUERIES (Using UNWIND for Batching)
@@ -93,26 +99,27 @@ class Neo4jRepository:
         UNWIND $batch AS row
         MERGE (n:Concept {name: row.name})
         WITH n, row
-
-        // Combine the existing graph array (or empty list if brand new node) with the incoming Python array
         UNWIND (coalesce(n.surface_forms, []) + row.surface_forms) AS form
-
-        // Re-pack them into a deduplicated array and save
         WITH n, collect(DISTINCT form) AS unique_forms
         SET n.surface_forms = unique_forms
         """
-
-        # The Neo4j driver strictly requires Python lists.
-        # We must cast the Pydantic set to a list before passing it to the transaction.
         for row in data:
             row['surface_forms'] = list(row['surface_forms'])
-
         await tx.run(query, batch=data)
 
     async def _upsert_categories(self, tx: AsyncTransaction, data: List[Dict[str, Any]]) -> None:
         query = """
         UNWIND $batch AS row
         MERGE (n:Category {name: row.name})
+        """
+        await tx.run(query, batch=data)
+
+    async def _upsert_external_laws(self, tx: AsyncTransaction, data: List[Dict[str, Any]]) -> None:
+        query = """
+        UNWIND $batch AS row
+        MERGE (n:ExternalLawNode {id: row.id})
+        SET n.name = row.name,
+            n.law_type = row.law_type
         """
         await tx.run(query, batch=data)
 
@@ -155,5 +162,14 @@ class Neo4jRepository:
         MATCH (source:Concept {name: row.source_concept_name})
         MATCH (target:Category {name: row.target_category_name})
         MERGE (source)-[:BELONGS_TO]->(target)
+        """
+        await tx.run(query, batch=data)
+
+    async def _upsert_refers_to_external_edges(self, tx: AsyncTransaction, data: List[Dict[str, Any]]) -> None:
+        query = """
+        UNWIND $batch AS row
+        MATCH (source:LawUnit {id: row.source_unit_id})
+        MATCH (target:ExternalLawNode {id: row.target_external_id})
+        MERGE (source)-[:REFERS_TO_EXTERNAL]->(target)
         """
         await tx.run(query, batch=data)

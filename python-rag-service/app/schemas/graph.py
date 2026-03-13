@@ -1,4 +1,4 @@
-from typing import List, Set, Optional
+from typing import List, Set
 from pydantic import BaseModel, Field
 from app.core.custom_types import UnitType
 
@@ -50,6 +50,16 @@ class CategoryNode(BaseModel):
     name: str = Field(..., description="The static ontology label (e.g., 'Infracțiuni')")
 
 
+class ExternalLawNode(BaseModel):
+    """
+    Layer 1 Boundary: Represents legislation outside the Traffic Code.
+    Acts as a deterministic trigger for the DSPy Web Search routing strategy.
+    """
+    id: str = Field(..., description="Normalized canonical ID (e.g., 'legea_286_2009')")
+    name: str = Field(..., description="Full text match (e.g., 'Legea nr. 286/2009')")
+    law_type: str = Field(..., description="Classification (e.g., 'Lege', 'Ordonanță', 'Regulament UE')")
+
+
 # ==========================================
 # GRAPH EDGES (RELATIONSHIPS)
 # ==========================================
@@ -79,6 +89,14 @@ class BelongsToEdge(BaseModel):
     target_category_name: str = Field(..., description="Name of the Category")
 
 
+class RefersToExternalEdge(BaseModel):
+    """
+    Layer 1 Boundary: LawUnit -> ExternalLawNode connection ([:REFERS_TO_EXTERNAL]).
+    """
+    source_unit_id: str = Field(..., description="ID of the internal LawUnit making the citation")
+    target_external_id: str = Field(..., description="Normalized ID of the ExternalLawNode")
+
+
 # ==========================================
 # MASTER FACADE PAYLOAD
 # ==========================================
@@ -88,11 +106,15 @@ class GraphPayload(BaseModel):
     The final validated package the Orchestrator hands to the Neo4j Adapter.
     Enforces a strict contract between the ML pipeline and the database layer.
     """
+    # Nodes
     law_units: List[LawUnitNode] = Field(default_factory=list)
     concepts: List[ConceptNode] = Field(default_factory=list)
     categories: List[CategoryNode] = Field(default_factory=list)
+    external_laws: List[ExternalLawNode] = Field(default_factory=list)
 
+    # Edges
     reference_edges: List[ReferenceEdge] = Field(default_factory=list)
     part_of_edges: List[PartOfEdge] = Field(default_factory=list)
     mentions_edges: List[MentionsEdge] = Field(default_factory=list)
     belongs_to_edges: List[BelongsToEdge] = Field(default_factory=list)
+    refers_to_external_edges: List[RefersToExternalEdge] = Field(default_factory=list)
