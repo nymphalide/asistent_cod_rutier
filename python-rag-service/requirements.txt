@@ -1,0 +1,20 @@
+# --- Core Framework & Configuration ---
+fastapi>=0.100.0        # Web Framework (Future use)
+uvicorn[standard]       # ASGI Server (Future use)
+pydantic>=2.0.0         # Data Validation
+pydantic-settings       # For loading config.py from .env
+python-dotenv           # Environment variable management
+
+# --- Database & ORM ---
+sqlalchemy>=2.0.0       # ORM
+psycopg2-binary         # PostgreSQL Driver (Use 'psycopg2' for prod if compiling)
+pgvector                # Vector Database support for Postgres
+alembic
+
+# --- AI & Ingestion ---
+openai>=1.0.0           # For Embeddings (Enricher)
+networkx                # For future Graph building
+
+# --- Testing ---
+pytest                  # Testing framework
+httpx                   # For API testing

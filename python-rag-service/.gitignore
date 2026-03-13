@@ -1,0 +1,51 @@
+# --- Python / Environment ---
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Database & Migrations ---
+# If you use SQLite for quick local tests
+*.db
+*.sqlite3
+
+# --- AI / Data ---
+# Do not commit your raw Romanian law text files
+data/raw_text/*.txt
+# Do not commit your generated graph exports (NetworkX/JSON)
+data/processed/
+
+# --- Environment Secrets ---
+# Crucial: Never commit your DATABASE_URL or API keys
+.env
+.env.local
+.env.*.local
+
+# --- Docker ---
+.docker/
+# If you use a local data volume for Postgres in Docker
+docker_postgres_data/
+
+# --- Windows / WSL2 ---
+# Thumbs.db is a classic Windows artifact
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# WSL2/Linux specific
+.DS_Store
+
+# --- Editor Specific ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Logs ---
+*.log
+logs/

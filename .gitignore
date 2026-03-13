@@ -1,0 +1,98 @@
+# ====================================================================
+# GENERAL / OS SPECIFIC
+# ====================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Windows specific (pentru că folosești Windows/WSL2)
+$RECYCLE.BIN/
+[Dd]esktop.ini
+ehthumbs.db
+[Tt]humbs.db
+
+# ====================================================================
+# FRONTEND (React.js) [cite: 4]
+# ====================================================================
+frontend-ui/node_modules/
+frontend-ui/dist/
+frontend-ui/build/
+frontend-ui/.env
+frontend-ui/.env.local
+frontend-ui/.env.development.local
+frontend-ui/.env.test.local
+frontend-ui/.env.production.local
+frontend-ui/npm-debug.log*
+frontend-ui/yarn-debug.log*
+frontend-ui/yarn-error.log*
+frontend-ui/.eslintcache
+
+# ====================================================================
+# BACKEND GATEWAY (Spring Boot / Java) [cite: 6]
+# ====================================================================
+spring-gateway/.gradle/
+spring-gateway/build/
+spring-gateway/out/
+spring-gateway/target/
+spring-gateway/bin/
+spring-gateway/*.iws
+spring-gateway/*.ipr
+spring-gateway/*.iml
+spring-gateway/.idea/
+spring-gateway/.classpath
+spring-gateway/.project
+spring-gateway/.settings/
+spring-gateway/.factorypath
+spring-gateway/application.local.yml
+
+# ====================================================================
+# AI MICROSERVICE (Python / FastAPI) [cite: 9]
+# ====================================================================
+python-rag-service/__pycache__/
+python-rag-service/*.py[cod]
+python-rag-service/*$py.class
+python-rag-service/.venv/
+python-rag-service/venv/
+python-rag-service/env/
+python-rag-service/.env
+python-rag-service/.pytest_cache/
+python-rag-service/.mypy_cache/
+python-rag-service/.ruff_cache/
+
+# Data & Persistence (Excludem baza de date locală și indexul vector) [cite: 128]
+python-rag-service/data/local_vdb/
+python-rag-service/data/*.db
+python-rag-service/data/*.sqlite
+# Nu excludem fișierele .txt brute dacă vrei să fie parte din repo, 
+# dar dacă sunt mari (>50MB), adaugă-le aici:
+# python-rag-service/data/*.txt
+
+# DSPy Compiled Programs (Dacă nu vrei să versiunezi cache-ul de optimizare) [cite: 45]
+python-rag-service/cached_programs/
+
+# ====================================================================
+# DOCKER & INFRASTRUCTURE
+# ====================================================================
+.docker/
+*/.dockerignore
+# Excludem volumele persistente de Docker dacă le mapezi local
+docker-volumes/
+
+# ====================================================================
+# IDE SPECIFIC (VS Code / IntelliJ)
+# ====================================================================
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+
+
+.env
+.env.local
+*.njsproj
+*.sln

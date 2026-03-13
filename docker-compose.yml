@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # --- DATABASE SPRING (Postgres 17 for Users/Logs/History) ---
+  db-spring:
+    image: postgres:17-alpine
+    container_name: db-spring
+    environment:
+      POSTGRES_USER: ${SPRING_DB_USER}
+      POSTGRES_PASSWORD: ${SPRING_DB_PASSWORD}
+      POSTGRES_DB: ${SPRING_DB_NAME}
+    ports:
+      - "${SPRING_DB_PORT}:5432"
+    volumes:
+      - spring_db_data:/var/lib/postgresql/data
+
+  # --- DATABASE PYTHON (Postgres 17 for LawUnit Metadata & Hierarchy) ---
+  db-python:
+    image: postgres:17-alpine
+    container_name: db-python
+    environment:
+      POSTGRES_USER: ${PYTHON_DB_USER}
+      POSTGRES_PASSWORD: ${PYTHON_DB_PASSWORD}
+      POSTGRES_DB: ${PYTHON_DB_NAME}
+    ports:
+      - "${PYTHON_DB_PORT}:5432"
+    volumes:
+      - python_metadata_data:/var/lib/postgresql/data
+
+  # --- VECTOR STORE (Qdrant for Semantic/Hybrid Search) ---
+  vector-store:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-vector
+    ports:
+      - "${QDRANT_PORT}:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  # --- GRAPH STORE (Neo4j for Knowledge Graph Traversal) ---
+  graph-store:
+    image: neo4j:latest
+    container_name: neo4j-graph
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+    ports:
+      - "7474:7474" # Browser UI
+      - "7687:7687" # Bolt Protocol
+    volumes:
+      - neo4j_data:/data
+
+  # --- PYTHON RAG SERVICE (The Core Engine) ---
+  python-rag-service:
+    build: ./python-rag-service
+    container_name: python-rag-service
+    depends_on:
+      - db-python
+      - vector-store
+      - graph-store
+    environment:
+      DATABASE_URL: ${PYTHON_DATABASE_URL}
+      QDRANT_HOST: ${QDRANT_HOST}
+      QDRANT_PORT: ${QDRANT_PORT}
+      NEO4J_URI: ${NEO4J_URI}
+      NEO4J_USER: ${NEO4J_USER}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS}
+      USE_CUDA: ${USE_CUDA}
+    ports:
+      - "${PYTHON_API_PORT}:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # --- SPRING GATEWAY (Dummy Placeholder) ---
+  spring-gateway:
+    build: ./spring-gateway
+    container_name: spring-gateway
+    depends_on:
+      - db-spring
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DB_PASSWORD}
+      RAG_SERVICE_URL: ${RAG_SERVICE_URL}
+    ports:
+      - "${SPRING_API_PORT}:8080"
+
+  # --- FRONTEND UI (Dummy Placeholder) ---
+  frontend-ui:
+    build: ./frontend-ui
+    container_name: frontend-ui
+    ports:
+      - "${FRONTEND_PORT}:80"
+
+volumes:
+  spring_db_data:
+  python_metadata_data:
+  qdrant_data:
+  neo4j_data:
