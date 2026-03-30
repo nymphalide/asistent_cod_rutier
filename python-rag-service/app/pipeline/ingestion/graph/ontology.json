@@ -1,0 +1,25 @@
+{
+  "domain": "Romanian Traffic Code",
+  "version": "1.0",
+  "description": "Static ontology labels for zero-shot NER extraction via GLiNER.",
+  "labels": [
+    "Participant la Trafic",
+    "Tip Vehicul",
+    "Infrastructură Rutieră",
+    "Document Auto",
+    "Autoritate Competentă",
+    "Sancțiune Contravențională",
+    "Infracțiune Rutieră",
+    "Semnalizare Rutieră",
+    "Regulă de Circulație",
+    "Manevră în Trafic",
+    "Procedură Administrativă",
+    "Condiție Medicală și Psihologică",
+    "Măsură de Retenție",
+    "Stare Tehnică Vehicul",
+    "Categorie Permis de Conducere",
+    "Registru Informatic",
+    "Categorie de Vârstă",
+    "Obligație Legală"
+  ]
+}

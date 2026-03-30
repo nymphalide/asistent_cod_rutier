@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.db import engine, Base
 from app.db import models
+
+
 app = FastAPI(title=settings.PROJECT_NAME)
 
 @app.get("/health")

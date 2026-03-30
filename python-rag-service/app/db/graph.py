@@ -55,32 +55,32 @@ class Neo4jRepository:
         """
         # 1. UPSERT NODES
         if payload.law_units:
-            await self._upsert_law_units(tx, [u.model_dump() for u in payload.law_units])
+            await self._upsert_law_units(tx, [u.model_dump(mode='json') for u in payload.law_units])
 
         if payload.concepts:
-            await self._upsert_concepts(tx, [c.model_dump() for c in payload.concepts])
+            await self._upsert_concepts(tx, [c.model_dump(mode='json') for c in payload.concepts])
 
         if payload.categories:
-            await self._upsert_categories(tx, [c.model_dump() for c in payload.categories])
+            await self._upsert_categories(tx, [c.model_dump(mode='json') for c in payload.categories])
 
         if payload.external_laws:
-            await self._upsert_external_laws(tx, [n.model_dump() for n in payload.external_laws])
+            await self._upsert_external_laws(tx, [n.model_dump(mode='json') for n in payload.external_laws])
 
         # 2. UPSERT EDGES
         if payload.reference_edges:
-            await self._upsert_reference_edges(tx, [e.model_dump() for e in payload.reference_edges])
+            await self._upsert_reference_edges(tx, [e.model_dump(mode='json') for e in payload.reference_edges])
 
         if payload.part_of_edges:
-            await self._upsert_part_of_edges(tx, [e.model_dump() for e in payload.part_of_edges])
+            await self._upsert_part_of_edges(tx, [e.model_dump(mode='json') for e in payload.part_of_edges])
 
         if payload.mentions_edges:
-            await self._upsert_mentions_edges(tx, [e.model_dump() for e in payload.mentions_edges])
+            await self._upsert_mentions_edges(tx, [e.model_dump(mode='json') for e in payload.mentions_edges])
 
         if payload.belongs_to_edges:
-            await self._upsert_belongs_to_edges(tx, [e.model_dump() for e in payload.belongs_to_edges])
+            await self._upsert_belongs_to_edges(tx, [e.model_dump(mode='json') for e in payload.belongs_to_edges])
 
         if payload.refers_to_external_edges:
-            await self._upsert_refers_to_external_edges(tx, [e.model_dump() for e in payload.refers_to_external_edges])
+            await self._upsert_refers_to_external_edges(tx, [e.model_dump(mode='json') for e in payload.refers_to_external_edges])
 
     # ==========================================
     # PRIVATE CYPHER QUERIES (Using UNWIND for Batching)

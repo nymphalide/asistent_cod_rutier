@@ -28,3 +28,20 @@ class ModelRegistry:
     def get_embedding_dimensions() -> int:
         """Required by Qdrant to initialize the vector index."""
         return 768  # nomic-embed-text outputs 768 dimensions
+
+    @staticmethod
+    def get_ner_config() -> Dict[str, Any]:
+        """Configuration for the Zero-Shot NER extraction."""
+        return {
+            "model": "urchade/gliner_multi-v2.1",
+            "batch_size": 8
+        }
+
+    @staticmethod
+    def get_clustering_config() -> Dict[str, Any]:
+        """Hyperparameters for HDBSCAN and entity resolution."""
+        return {
+            "min_cluster_size": 2,
+            "min_samples": 1,
+            "metric": "cosine"
+        }

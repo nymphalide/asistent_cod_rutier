@@ -27,12 +27,22 @@ class TrafficCodeParser:
 
     def _read_file_safely(self, file_path: str) -> List[str]:
         encodings = ['utf-8-sig', 'iso-8859-2', 'cp1252', 'utf-8']
+
+        # Mapping legacy cedillas to correct comma-below diacritics
+        diacritic_map = str.maketrans({'ş': 'ș', 'ţ': 'ț', 'Ş': 'Ș', 'Ţ': 'Ț'})
+
         for enc in encodings:
             try:
                 # Adding newline=None forces Python to translate all \r\n to \n automatically
                 with open(file_path, 'r', encoding=enc, newline=None) as f:
-                    # strip('\r\n ') guarantees no Windows ghosts survive
-                    return [line.strip('\r\n ') for line in f.readlines() if line.strip('\r\n ')]
+                    lines = []
+                    for line in f.readlines():
+                        # strip('\r\n ') guarantees no Windows ghosts survive
+                        clean_line = line.strip('\r\n ')
+                        if clean_line:
+                            # Normalize text to bulletproof downstream deterministic extraction
+                            lines.append(clean_line.translate(diacritic_map))
+                    return lines
             except UnicodeDecodeError:
                 continue
         raise ValueError(f"Encoding failed for {file_path}")
