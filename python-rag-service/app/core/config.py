@@ -42,13 +42,10 @@ class Settings(BaseSettings):
 
     # Crucial: This tells Pydantic WHERE the truth is.
     model_config = SettingsConfigDict(
-        # Pydantic reads left-to-right.
-        # It loads .env first, then overwrites anything it finds in .env.local
-        env_file=("../.env", "../.env.local"),
-        env_file_encoding="utf-8",
+        # Pydantic will automatically read the variables injected by Docker Compose.
+        # No env_file needed.
         case_sensitive=True,
         extra="ignore"
     )
-
 
 settings = Settings()

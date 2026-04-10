@@ -80,7 +80,7 @@ class TrafficCodeParser:
                     num, title = match_data.group(2), match_data.group(3) or line
                     self.active_chapter = f"cap_{num}"
                     self.active_section = self.active_article = self.active_paragraph = self.active_list_parent = None
-                    self.pending_meta = {"id": self.active_chapter, "parent_id": None, "unit_type": UnitType.CHAPTER, "metadata": {"title": title}}
+                    self.pending_meta = {"id": self.active_chapter, "parent_id": None, "unit_type": UnitType.CHAPTER, "meta_info": {"title": title}}
 
                 case 'SECTION':
                     sec_num = match_data.group(1).replace(' ', '_')
@@ -88,34 +88,34 @@ class TrafficCodeParser:
                     unit_id = f"{self.active_chapter}_sec_{sec_num}" if self.active_chapter else f"sec_{sec_num}"
                     self.active_section = unit_id
                     self.active_article = self.active_paragraph = self.active_list_parent = None
-                    self.pending_meta = {"id": self.active_section, "parent_id": self.active_chapter, "unit_type": UnitType.SECTION, "metadata": {"title": title, "number": sec_num}}
+                    self.pending_meta = {"id": self.active_section, "parent_id": self.active_chapter, "unit_type": UnitType.SECTION, "meta_info": {"title": title, "number": sec_num}}
 
                 case 'ARTICLE':
                     art_num = match_data.group(1)
                     self.active_article = f"art_{art_num.replace('.', '_')}"
                     self.active_paragraph = self.active_list_parent = None
-                    self.pending_meta = {"id": self.active_article, "parent_id": self.active_section or self.active_chapter, "unit_type": UnitType.ARTICLE, "metadata": {"number": art_num}}
+                    self.pending_meta = {"id": self.active_article, "parent_id": self.active_section or self.active_chapter, "unit_type": UnitType.ARTICLE, "meta_info": {"number": art_num}}
 
                 case 'PARAGRAPH':
                     para_num = match_data.group(1)
                     self.active_paragraph = f"{self.active_article}_alin_{para_num.replace('.', '_')}"
                     self.active_list_parent = self.active_paragraph
-                    self.pending_meta = {"id": self.active_paragraph, "parent_id": self.active_article, "unit_type": UnitType.PARAGRAPH, "metadata": {"number": para_num}}
+                    self.pending_meta = {"id": self.active_paragraph, "parent_id": self.active_article, "unit_type": UnitType.PARAGRAPH, "meta_info": {"number": para_num}}
 
                 case 'LETTER':
                     letter = match_data.group(1)
                     unit_id = f"{self.active_list_parent or self.active_article}_lit_{letter}"
-                    self.pending_meta = {"id": unit_id, "parent_id": self.active_list_parent or self.active_article, "unit_type": UnitType.LETTER_ITEM, "metadata": {"letter": letter}}
+                    self.pending_meta = {"id": unit_id, "parent_id": self.active_list_parent or self.active_article, "unit_type": UnitType.LETTER_ITEM, "meta_info": {"letter": letter}}
 
                 case 'NUMBERED':
                     num = match_data.group(1)
                     unit_id = f"{self.active_article or 'anexa'}_pct_{num.replace('.', '_')}"
-                    self.pending_meta = {"id": unit_id, "parent_id": self.active_list_parent or self.active_article, "unit_type": UnitType.NUMBERED_ITEM, "metadata": {"number": num}}
+                    self.pending_meta = {"id": unit_id, "parent_id": self.active_list_parent or self.active_article, "unit_type": UnitType.NUMBERED_ITEM, "meta_info": {"number": num}}
 
                 case 'TEXT':
                     # Edge case: Catching unnumbered prologue text before paragraphs start
                     if not self.current_buffer and self.active_article and not self.active_paragraph:
-                        self.pending_meta = {"id": f"{self.active_article}_prologue", "parent_id": self.active_article, "unit_type": UnitType.PROLOGUE, "metadata": {}}
+                        self.pending_meta = {"id": f"{self.active_article}_prologue", "parent_id": self.active_article, "unit_type": UnitType.PROLOGUE, "meta_info": {}}
 
             # Universal Post-processing: Always append the current line to the active buffer
             self.current_buffer.append(line)

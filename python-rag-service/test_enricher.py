@@ -22,14 +22,14 @@ async def run_test():
         id="cap_2",
         content="CAPITOLUL II: Vehiculele. Secțiunea 1: Condițiile privind circulația vehiculelor.",
         unit_type=UnitType.CHAPTER,
-        metadata={"source": "test_script"}
+        meta_info={"source": "test_script"}
     )
 
     article_unit = LawUnitCreate(
         id="art_14",
         content="Tramvaiele, tractoarele agricole sau forestiere, remorcile destinate a fi tractate de acestea, precum și troleibuzele se înregistrează la nivelul primăriilor comunelor, ale orașelor, ale municipiilor, ale sectoarelor municipiului București.",
         unit_type=UnitType.ARTICLE,
-        metadata={"source": "test_script"}
+        meta_info={"source": "test_script"}
     )
 
     units_to_test = [chapter_unit, article_unit]

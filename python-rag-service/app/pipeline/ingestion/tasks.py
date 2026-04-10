@@ -14,9 +14,14 @@ from app.pipeline.ingestion.graph.orchestrator import GraphOrchestrator
 from app.pipeline.ingestion.graph.extractors.deterministic import DeterministicExtractor
 from app.pipeline.ingestion.graph.extractors.semantic import SemanticExtractor
 from app.pipeline.ingestion.graph.clustering import ClusteringEngine
+from app.schemas.law_unit import LawUnitCreate
 
 logger = logging.getLogger(__name__)
 
+#Singleton Pattern for ML Extractors
+GLOBAL_DETERMINISTIC_EXTRACTOR = DeterministicExtractor()
+GLOBAL_SEMANTIC_EXTRACTOR = SemanticExtractor()
+GLOBAL_CLUSTERING_ENGINE = ClusteringEngine()
 
 @task_app.task(name="process_knowledge_batch")
 async def process_knowledge_batch_task(unit_ids: List[str]):
@@ -42,9 +47,11 @@ async def process_knowledge_batch_task(unit_ids: List[str]):
 
             raw_units = []
             for uid in unit_ids:
-                unit = await pg_repo.get(uid)
-                if unit:
-                    raw_units.append(unit)
+                db_unit = await pg_repo.get(uid)
+                if db_unit:
+                    # Pydantic conversion inside the condition
+                    pydantic_unit = LawUnitCreate.model_validate(db_unit)
+                    raw_units.append(pydantic_unit)
 
             if not raw_units:
                 logger.warning("No units found in Postgres. Aborting task.")
@@ -63,9 +70,9 @@ async def process_knowledge_batch_task(unit_ids: List[str]):
             logger.info("Extracting Knowledge Graph boundaries and semantics...")
             graph_orchestrator = GraphOrchestrator(
                 graph_repo=graph_repo,
-                deterministic_extractor=DeterministicExtractor(),
-                semantic_extractor=SemanticExtractor(),
-                clustering_engine=ClusteringEngine()
+                deterministic_extractor=GLOBAL_DETERMINISTIC_EXTRACTOR,
+                semantic_extractor=GLOBAL_SEMANTIC_EXTRACTOR,
+                clustering_engine=GLOBAL_CLUSTERING_ENGINE
             )
             await graph_orchestrator.process_batch(raw_units)
 

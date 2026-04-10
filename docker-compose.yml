@@ -1,7 +1,50 @@
-version: '3.8'
+# ==========================================
+# MASTER BLUEPRINT (DRY Pattern)
+# ==========================================
+x-python-base: &python-base
+  build: ./python-rag-service
+  image: traffic-rag-core:latest
+  depends_on:
+    db-python:
+      condition: service_healthy
+    vector-store:
+      condition: service_started
+    graph-store:
+      condition: service_started
+  environment:
+    PYTHON_DATABASE_URL: ${PYTHON_DATABASE_URL}
+    QDRANT_HOST: vector-store 
+    QDRANT_PORT: ${QDRANT_PORT}
+    NEO4J_URI: ${NEO4J_URI}
+    NEO4J_USER: ${NEO4J_USER}
+    NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
+    HF_TOKEN: ${HF_TOKEN}
+    HF_HOME: /app/cache/huggingface
+    # Windows Docker Desktop specific bridge
+    OLLAMA_HOST: http://host.docker.internal:11434 
+  volumes:
+    # 1. Live Data Tunnel
+    - ./python-rag-service/data:/app/data
+    # 2. Live Code Tunnels for Hot-Reloading
+    - ./python-rag-service/app:/app/app
+    - ./python-rag-service/main.py:/app/main.py
+    - ./python-rag-service/cache:/app/cache
+    # 3. Volume Exclusion Pattern (Blocks Windows cache/IDE files)
+    - /app/app/__pycache__
+    - /app/app/.idea
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
 
 services:
-  # --- DATABASE SPRING (Postgres 17 for Users/Logs/History) ---
+  # ==========================================
+  # INFRASTRUCTURE DATABASES
+  # ==========================================
   db-spring:
     image: postgres:17-alpine
     container_name: db-spring
@@ -14,7 +57,6 @@ services:
     volumes:
       - spring_db_data:/var/lib/postgresql/data
 
-  # --- DATABASE PYTHON (Postgres 17 for LawUnit Metadata & Hierarchy) ---
   db-python:
     image: postgres:17-alpine
     container_name: db-python
@@ -26,8 +68,12 @@ services:
       - "${PYTHON_DB_PORT}:5432"
     volumes:
       - python_metadata_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PYTHON_DB_USER} -d ${PYTHON_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # --- VECTOR STORE (Qdrant for Semantic/Hybrid Search) ---
   vector-store:
     image: qdrant/qdrant:latest
     container_name: qdrant-vector
@@ -36,48 +82,47 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  # --- GRAPH STORE (Neo4j for Knowledge Graph Traversal) ---
   graph-store:
     image: neo4j:latest
     container_name: neo4j-graph
     environment:
       NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
     ports:
-      - "7474:7474" # Browser UI
-      - "7687:7687" # Bolt Protocol
+      - "7474:7474"
+      - "7687:7687"
     volumes:
       - neo4j_data:/data
 
-  # --- PYTHON RAG SERVICE (The Core Engine) ---
+  # ==========================================
+  # THE AI MICROSERVICES
+  # ==========================================
+  
+  # The Web Server (Producer)
   python-rag-service:
-    build: ./python-rag-service
+    <<: *python-base
     container_name: python-rag-service
-    depends_on:
-      - db-python
-      - vector-store
-      - graph-store
-    environment:
-      DATABASE_URL: ${PYTHON_DATABASE_URL}
-      QDRANT_HOST: ${QDRANT_HOST}
-      QDRANT_PORT: ${QDRANT_PORT}
-      NEO4J_URI: ${NEO4J_URI}
-      NEO4J_USER: ${NEO4J_USER}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
-      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS}
-      USE_CUDA: ${USE_CUDA}
+    # Uvicorn's native hot-reloading
+    command: >
+      bash -c "procrastinate --app=app.db.queue.task_app schema --apply && 
+      python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "${PYTHON_API_PORT}:8000"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
-  # --- SPRING GATEWAY (Dummy Placeholder) ---
+  # The Background ML Engine (Consumer)
+  python-rag-worker:
+    <<: *python-base
+    container_name: python-rag-worker
+    # Watchdog wrapper for Procrastinate hot-reloading
+    command: >
+      watchmedo auto-restart 
+      --directory=./app 
+      --pattern=*.py 
+      --recursive 
+      -- procrastinate --app=app.db.queue.task_app worker
+
+  # ==========================================
+  # JAVA & REACT PLACEHOLDERS
+  # ==========================================
   spring-gateway:
     build: ./spring-gateway
     container_name: spring-gateway
@@ -91,7 +136,6 @@ services:
     ports:
       - "${SPRING_API_PORT}:8080"
 
-  # --- FRONTEND UI (Dummy Placeholder) ---
   frontend-ui:
     build: ./frontend-ui
     container_name: frontend-ui

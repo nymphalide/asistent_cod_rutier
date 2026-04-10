@@ -1,20 +1,30 @@
 # --- Core Framework & Configuration ---
-fastapi>=0.100.0        # Web Framework (Future use)
-uvicorn[standard]       # ASGI Server (Future use)
+fastapi>=0.100.0        # Web Framework
+uvicorn[standard]       # ASGI Server
 pydantic>=2.0.0         # Data Validation
-pydantic-settings       # For loading config.py from .env
-python-dotenv           # Environment variable management
+pydantic-settings       # Environment variable management
+python-dotenv
 
 # --- Database & ORM ---
 sqlalchemy>=2.0.0       # ORM
-psycopg2-binary         # PostgreSQL Driver (Use 'psycopg2' for prod if compiling)
-pgvector                # Vector Database support for Postgres
-alembic
+asyncpg                 # Async PostgreSQL Driver (used in your DATABASE_URL)
+psycopg[binary]         # Required natively by Procrastinate's PsycopgConnector
+alembic                 # Migrations
 
-# --- AI & Ingestion ---
-openai>=1.0.0           # For Embeddings (Enricher)
-networkx                # For future Graph building
+# --- Task Queue (Worker Pattern) ---
+procrastinate           # Background task processing queue
 
-# --- Testing ---
-pytest                  # Testing framework
-httpx                   # For API testing
+# --- Vector & Graph Stores (Repository Pattern) ---
+qdrant-client           # Qdrant Vector Database driver
+neo4j                   # Neo4j Graph Database driver
+
+# --- AI & Extractors (Strategy Pattern) ---
+ollama                  # Local LLM Gateway for Embeddings & Chat
+gliner                  # Semantic Entity Extractor
+scikit-learn>=1.3.0     # Required for HDBSCAN clustering engine
+
+# --- Testing & Utils ---
+pytest
+pytest-asyncio          # Required for your @pytest.mark.asyncio decorators
+httpx
+watchdog[watchmedo]>=4.0.0 # Hot-reloading for the background worker

@@ -10,12 +10,10 @@ class LawUnitBase(BaseModel):
     content: str = Field(..., description="The actual legal text")
     unit_type: UnitType
 
-    # Metadata is a flexible dictionary for things like breadcrumbs or chapter titles
-    # FIX: Use 'alias' so the API receives "metadata", but Python sees "meta_info"
-    meta_info: Dict[str, Any] = Field(default_factory=dict, alias="metadata")
+    # Metainfo is a flexible dictionary for things like breadcrumbs or chapter titles
+    meta_info: Dict[str, Any] = Field(default_factory=dict)
 
-    # FIX: Allow population by name or alias
-    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+    model_config = ConfigDict(from_attributes=True)
 
 
 # 2. Creation DTO (Input)

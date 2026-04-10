@@ -1,12 +1,12 @@
 # Use NVIDIA CUDA runtime as base for GPU acceleration
 FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 
-# Prevent interactive prompts and ensure Python output is sent to logs immediately
+# Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# Merged and sorted system dependencies
+# 1. System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     python3-dev \
@@ -15,26 +15,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy dependency list
+# 2. HEAVY LAYER: Install PyTorch FIRST and cache this layer
+# We remove --no-cache-dir temporarily so if it fails, pip can resume the download
+# increased default timeout prevents pip from dropping large file downloads
+RUN pip3 install --default-timeout=1000 torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# 3. LIGHT LAYER: Copy requirements and install the rest
 COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Merged Python package installation:
-# 1. Install PyTorch with specific CUDA 12.1 support
-# 2. Install remaining RAG dependencies
-RUN pip3 install --no-cache-dir \
-    torch \
-    torchaudio \
-    torchvision \
-    --index-url https://download.pytorch.org/whl/cu121 \
-    && pip3 install --no-cache-dir -r requirements.txt
-
-# Copy the entire Python source
-# Ensure main.py exists in this directory before building
+# 4. Copy the rest of the application
 COPY . .
 
 # Port for FastAPI
 EXPOSE 8000
 
-# Start the application using Uvicorn 
-# We use the module flag to ensure main.py is found within /app
+# Default command (will be overridden by Docker Compose for the worker)
 CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

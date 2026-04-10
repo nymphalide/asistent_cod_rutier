@@ -58,9 +58,11 @@ class IngestionService:
             unit_ids = [u.id for u in batch]
 
             # Defer the async task to the Procrastinate queue
-            await task_app.configure(
+            # We use 'configure_task' on the app object.
+            await task_app.configure_task(
+                name="process_knowledge_batch",
                 task_kwargs={"unit_ids": unit_ids}
-            ).defer_async(name="process_knowledge_batch")
+            ).defer_async()
 
             logger.info(f"Scheduled worker task for batch of {len(batch)} units.")
 
