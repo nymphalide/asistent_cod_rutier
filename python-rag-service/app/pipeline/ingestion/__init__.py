@@ -8,10 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.law_unit import LawUnitCreate
 from app.pipeline.ingestion.parser import TrafficCodeParser
 from app.db.repository import LawUnitRepository
-from app.db.queue import task_app
+from app.core.worker_app import task_app # <-- Updated Import
 
 logger = logging.getLogger(__name__)
-
 
 class IngestionService:
     """
@@ -57,13 +56,19 @@ class IngestionService:
 
             unit_ids = [u.id for u in batch]
 
-            # Defer the async task to the Procrastinate queue
-            # We use 'configure_task' on the app object.
+            # Command Pattern: Defer the async task to the Procrastinate queue
+            # Task A: The Semantic Path (Ollama + Qdrant -> Slow, Stable)
             await task_app.configure_task(
-                name="process_knowledge_batch",
+                name="ingest_vectors_batch",
                 task_kwargs={"unit_ids": unit_ids}
             ).defer_async()
 
-            logger.info(f"Scheduled worker task for batch of {len(batch)} units.")
+            # Task B: The Structural Path (GLiNER + HDBSCAN + Neo4j -> Fast, Volatile)
+            await task_app.configure_task(
+                name="ingest_graph_batch",
+                task_kwargs={"unit_ids": unit_ids}
+            ).defer_async()
+
+            logger.info(f"Scheduled decoupled Vector and Graph tasks for batch of {len(batch)} units.")
 
         logger.info("Ingestion complete. Background workers will handle AI enrichment.")

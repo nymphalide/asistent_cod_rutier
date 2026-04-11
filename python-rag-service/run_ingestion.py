@@ -5,7 +5,7 @@ import logging
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.pipeline.ingestion import IngestionService
-from app.db.queue import task_app  # IMPORTĂM task_app aici
+from app.core.worker_app import task_app  # IMPORTĂM task_app aici
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

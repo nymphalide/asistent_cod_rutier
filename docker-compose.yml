@@ -1,3 +1,5 @@
+version: '3.8'
+
 # ==========================================
 # MASTER BLUEPRINT (DRY Pattern)
 # ==========================================
@@ -10,7 +12,7 @@ x-python-base: &python-base
     vector-store:
       condition: service_started
     graph-store:
-      condition: service_started
+      condition: service_healthy
   environment:
     PYTHON_DATABASE_URL: ${PYTHON_DATABASE_URL}
     QDRANT_HOST: vector-store 
@@ -21,16 +23,12 @@ x-python-base: &python-base
     OPENAI_API_KEY: ${OPENAI_API_KEY}
     HF_TOKEN: ${HF_TOKEN}
     HF_HOME: /app/cache/huggingface
-    # Windows Docker Desktop specific bridge
     OLLAMA_HOST: http://host.docker.internal:11434 
   volumes:
-    # 1. Live Data Tunnel
     - ./python-rag-service/data:/app/data
-    # 2. Live Code Tunnels for Hot-Reloading
     - ./python-rag-service/app:/app/app
     - ./python-rag-service/main.py:/app/main.py
     - ./python-rag-service/cache:/app/cache
-    # 3. Volume Exclusion Pattern (Blocks Windows cache/IDE files)
     - /app/app/__pycache__
     - /app/app/.idea
   deploy:
@@ -42,9 +40,6 @@ x-python-base: &python-base
             capabilities: [gpu]
 
 services:
-  # ==========================================
-  # INFRASTRUCTURE DATABASES
-  # ==========================================
   db-spring:
     image: postgres:17-alpine
     container_name: db-spring
@@ -92,55 +87,30 @@ services:
       - "7687:7687"
     volumes:
       - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # ==========================================
-  # THE AI MICROSERVICES
-  # ==========================================
-  
-  # The Web Server (Producer)
   python-rag-service:
     <<: *python-base
     container_name: python-rag-service
-    # Uvicorn's native hot-reloading
     command: >
-      bash -c "procrastinate --app=app.db.queue.task_app schema --apply && 
+      bash -c "procrastinate --app=app.core.worker_app.task_app schema --apply && 
       python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "${PYTHON_API_PORT}:8000"
 
-  # The Background ML Engine (Consumer)
   python-rag-worker:
     <<: *python-base
     container_name: python-rag-worker
-    # Watchdog wrapper for Procrastinate hot-reloading
     command: >
       watchmedo auto-restart 
       --directory=./app 
       --pattern=*.py 
       --recursive 
-      -- procrastinate --app=app.db.queue.task_app worker
-
-  # ==========================================
-  # JAVA & REACT PLACEHOLDERS
-  # ==========================================
-  spring-gateway:
-    build: ./spring-gateway
-    container_name: spring-gateway
-    depends_on:
-      - db-spring
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DB_PASSWORD}
-      RAG_SERVICE_URL: ${RAG_SERVICE_URL}
-    ports:
-      - "${SPRING_API_PORT}:8080"
-
-  frontend-ui:
-    build: ./frontend-ui
-    container_name: frontend-ui
-    ports:
-      - "${FRONTEND_PORT}:80"
+      -- procrastinate --app=app.core.worker_app.task_app worker
 
 volumes:
   spring_db_data:

@@ -50,7 +50,7 @@ spring-gateway/.factorypath
 spring-gateway/application.local.yml
 
 # ====================================================================
-# AI MICROSERVICE (Python / FastAPI) [cite: 9]
+# AI MICROSERVICE (Python / FastAPI)
 # ====================================================================
 python-rag-service/__pycache__/
 python-rag-service/*.py[cod]
@@ -62,6 +62,7 @@ python-rag-service/.env
 python-rag-service/.pytest_cache/
 python-rag-service/.mypy_cache/
 python-rag-service/.ruff_cache/
+python-rag-service/cache/
 
 # Data & Persistence (Excludem baza de date locală și indexul vector) [cite: 128]
 python-rag-service/data/local_vdb/
