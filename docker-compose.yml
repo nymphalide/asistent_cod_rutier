@@ -29,6 +29,7 @@ x-python-base: &python-base
     - ./python-rag-service/app:/app/app
     - ./python-rag-service/main.py:/app/main.py
     - ./python-rag-service/cache:/app/cache
+    - ./python-rag-service/cli:/app/cli
     - /app/app/__pycache__
     - /app/app/.idea
   deploy:

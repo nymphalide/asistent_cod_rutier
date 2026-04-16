@@ -27,6 +27,10 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # 4. Copy the rest of the application
 COPY . .
 
+# 5. Install the developer CLI tool as an editable package
+# This makes the 'rag' command globally available within the container
+RUN pip3 install -e .
+
 # Port for FastAPI
 EXPOSE 8000
 

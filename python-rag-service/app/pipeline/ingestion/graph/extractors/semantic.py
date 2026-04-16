@@ -1,19 +1,20 @@
-import os
 import json
 import logging
 import asyncio
 from typing import List
-from gliner import GLiNER
+from gliner import GLiNER # type: ignore
+import threading
 
 from app.schemas.graph import RawEntity
-from app.db.models import LawUnit
+from app.schemas.law_unit import LawUnitCreate
 from app.core.config import settings
 from app.core.ai_registry import ModelRegistry
+from app.core.patterns import SingletonMeta
 
 logger = logging.getLogger(__name__)
 
 
-class SemanticExtractor:
+class SemanticExtractor(metaclass=SingletonMeta):
     def __init__(self, ontology_path: str = "app/pipeline/ingestion/graph/ontology.json"):
         self.ontology_path = ontology_path
         self.labels = self._load_ontology()
@@ -24,26 +25,38 @@ class SemanticExtractor:
         self.batch_size = config["batch_size"]
         self.device = settings.DEVICE
 
-        # +++ THE FIX: Lazy Loading +++
+        # Lazy Loading
         # We start with None. The model will NOT download when this class is instantiated.
         self._model = None
+
+        # Initialize a threading lock to prevent simultaneous VRAM allocations
+        self._lock = threading.Lock()
 
     def _load_ontology(self) -> List[str]:
         with open(self.ontology_path, "r", encoding="utf-8") as f:
             return json.load(f).get("labels", [])
 
     def _get_model(self) -> GLiNER:
-        """Lazy loader: only boots GLiNER when actual extraction is requested."""
+        """
+        Lazy loader utilizing the Double-Checked Locking Pattern.
+        Ensures thread-safe Singleton initialization for the GLiNER model.
+        """
+        # 1st Check: Fast path. If the model is already loaded, skip lock overhead.
         if self._model is None:
-            logger.info(f"Initializing {self.model_name} on {self.device}...")
-            try:
-                self._model = GLiNER.from_pretrained(self.model_name).to(self.device)
-            except Exception as e:
-                logger.error(f"Model initialization failed: {e}")
-                raise
+            # Acquire lock: Only one thread can enter this block at a time.
+            with self._lock:
+                # 2nd Check: Ensures waiting threads don't reload the model
+                # after the first thread finishes and releases the lock.
+                if self._model is None:
+                    logger.info(f"Initializing {self.model_name} on {self.device}...")
+                    try:
+                        self._model = GLiNER.from_pretrained(self.model_name).to(self.device)
+                    except Exception as e:
+                        logger.error(f"Model initialization failed: {e}")
+                        raise
         return self._model
 
-    def _sync_predict_batch(self, units: List[LawUnit]) -> List[RawEntity]:
+    def _sync_predict_batch(self, units: List[LawUnitCreate]) -> List[RawEntity]:
         texts = [unit.content for unit in units]
         raw_entities: List[RawEntity] = []
 
@@ -69,5 +82,5 @@ class SemanticExtractor:
                     )
         return raw_entities
 
-    async def extract_batch(self, units: List[LawUnit]) -> List[RawEntity]:
+    async def extract_batch(self, units: List[LawUnitCreate]) -> List[RawEntity]:
         return await asyncio.to_thread(self._sync_predict_batch, units)

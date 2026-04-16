@@ -4,22 +4,26 @@ from ollama import AsyncClient
 
 from app.core.config import settings
 from app.core.ai_registry import ModelRegistry
+from app.core.patterns import SingletonMeta
 
 
-class LLMGateway:
+class LLMGateway(metaclass=SingletonMeta):
     """
-    Singleton Pattern: Ensures a single global instance.
     Gateway Pattern: Centralizes all external LLM API calls.
+    SingletonMeta ensures only one connection pool exists.
     """
-    _instance = None
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(LLMGateway, cls).__new__(cls)
-            cls._instance.client = AsyncClient(host=settings.OLLAMA_HOST)
-            # ONE global bouncer to protect the GPU from OOM crashes
-            cls._instance.semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_ENRICHMENT_TASKS)
-        return cls._instance
+    def __init__(self):
+        # Because of the metaclass, this is guaranteed to run exactly once.
+        self.client = AsyncClient(host=settings.OLLAMA_HOST)
+        self._semaphore = None
+
+    @property
+    def semaphore(self):
+        # Lazy-load inside the active event loop to prevent RuntimeError
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_ENRICHMENT_TASKS)
+        return self._semaphore
 
     async def get_embedding(self, text: str, model: str) -> Optional[List[float]]:
         if not text.strip():

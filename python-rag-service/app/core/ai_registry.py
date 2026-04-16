@@ -25,6 +25,11 @@ class ModelRegistry:
         return "nomic-embed-text"
 
     @staticmethod
+    def get_sparse_embedding_model() -> str:
+        """The designated sparse model for keyword weights (BM25/SPLADE)."""
+        return "Qdrant/bm25"
+
+    @staticmethod
     def get_embedding_dimensions() -> int:
         """Required by Qdrant to initialize the vector index."""
         return 768  # nomic-embed-text outputs 768 dimensions

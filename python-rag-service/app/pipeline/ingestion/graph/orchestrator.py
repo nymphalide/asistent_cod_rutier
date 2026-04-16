@@ -6,7 +6,7 @@ from app.db.graph import Neo4jRepository
 from app.pipeline.ingestion.graph.extractors.deterministic import DeterministicExtractor
 from app.pipeline.ingestion.graph.extractors.semantic import SemanticExtractor
 from app.pipeline.ingestion.graph.clustering import ClusteringEngine
-from app.db.models import LawUnit
+from app.schemas.law_unit import LawUnitCreate
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +30,9 @@ class GraphOrchestrator:
         self.semantic_extractor = semantic_extractor
         self.clustering_engine = clustering_engine
 
-    async def process_batch(self, units: List[LawUnit]) -> None:
+    async def process_batch(self, units: List[LawUnitCreate]) -> None:
         """
-        Executes the full graph formulation pipeline for a batch of pre-loaded LawUnits.
+        Executes the full graph formulation pipeline for a batch of preloaded LawUnits.
         """
         if not units:
             logger.warning("No valid LawUnits provided to the Orchestrator.")

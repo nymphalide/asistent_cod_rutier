@@ -1,12 +1,14 @@
 import json
 import logging
 import asyncio
-from typing import List, Optional
+from typing import List
 
 from app.schemas.law_unit import LawUnitCreate, LawUnitEnriched
 from app.core.custom_types import UnitType
 from app.core.ai_registry import ModelRegistry
 from app.clients.llm_gateway import LLMGateway
+from fastembed import SparseTextEmbedding # type: ignore
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,9 @@ class EnricherService:
     def __init__(self):
         self.gateway = LLMGateway()
         self.embedding_model = ModelRegistry.get_embedding_model()
+        sparse_model_name = ModelRegistry.get_sparse_embedding_model()
+        self.sparse_model = SparseTextEmbedding(model_name=sparse_model_name)
+
 
     async def _generate_questions(self, content: str) -> List[str]:
         prompt = (
@@ -62,12 +67,34 @@ class EnricherService:
         content_vector = embeddings[0]
         question_vectors = [vec for vec in embeddings[1:] if vec is not None]
 
-        # 4. Return the Enriched Contract
+        # 4. Generate the Sparse Vectors (Locally on CPU)
+
+        # Embed the main content
+        # Wrap the synchronous embed call to prevent blocking the async loop
+        content_sparse_result = (await asyncio.to_thread(lambda: list(self.sparse_model.embed([unit.content]))))[0]
+        content_sparse_dict = {
+            "indices": content_sparse_result.indices.tolist(),
+            "values": content_sparse_result.values.tolist()
+        }
+
+        # Embed the hypothetical questions (if any)
+        question_sparse_dicts = []
+        if questions:
+            q_sparse_results = await asyncio.to_thread(lambda: list(self.sparse_model.embed(questions)))
+            for res in q_sparse_results:
+                question_sparse_dicts.append({
+                    "indices": res.indices.tolist(),
+                    "values": res.values.tolist()
+                })
+
+        # 5. Return the Enriched Contract
         return LawUnitEnriched(
             **unit.model_dump(by_alias=True),
             hypothetical_questions=questions,
             content_vector=content_vector,
-            question_vectors=question_vectors
+            question_vectors=question_vectors,
+            sparse_vector=content_sparse_dict,
+            question_sparse_vectors=question_sparse_dicts
         )
 
     async def enrich_batch(self, units: List[LawUnitCreate]) -> List[LawUnitEnriched]:

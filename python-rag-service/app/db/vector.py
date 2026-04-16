@@ -1,6 +1,6 @@
 import uuid
 import logging
-from typing import List
+from typing import List, Any
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
@@ -40,22 +40,41 @@ class QdrantRepository:
                 vectors_config=models.VectorParams(
                     size=dimensions,
                     distance=models.Distance.COSINE
-                )
+                ),
+                sparse_vectors_config={
+                    "text-sparse": models.SparseVectorParams(
+                        modifier=models.Modifier.IDF
+                    )
+                }
             )
+
             logger.info(f"Created Qdrant collection '{self.collection_name}' with {dimensions} dimensions.")
         except Exception as e:
             logger.error(f"Failed to initialize Qdrant collection: {e}")
             raise RuntimeError(f"Vector database initialization failed: {e}") from e
 
-    def _map_to_points(self, unit: LawUnitEnriched) -> List[models.PointStruct]:
+    @staticmethod
+    def _map_to_points(unit: LawUnitEnriched) -> List[models.PointStruct]:
         points = []
 
         if unit.content_vector:
             content_id = str(uuid.uuid5(NAMESPACE_RAG, f"{unit.id}_content"))
+
+            # FIX: Add type hint so the IDE expects mixed values (lists AND objects)
+            combined_vector: dict[str, Any] = {
+                "": unit.content_vector,  # Default dense vector
+            }
+
+            if unit.sparse_vector and unit.sparse_vector.get("indices"):
+                combined_vector["text-sparse"] = models.SparseVector(
+                    indices=unit.sparse_vector["indices"],
+                    values=unit.sparse_vector["values"]
+                )
+
             points.append(
                 models.PointStruct(
                     id=content_id,
-                    vector=unit.content_vector,
+                    vector=combined_vector,
                     payload={
                         "unit_id": unit.id,
                         "unit_type": unit.unit_type.value,
@@ -69,10 +88,25 @@ class QdrantRepository:
         if unit.question_vectors and unit.hypothetical_questions:
             for idx, (q_vector, q_text) in enumerate(zip(unit.question_vectors, unit.hypothetical_questions)):
                 question_id = str(uuid.uuid5(NAMESPACE_RAG, f"{unit.id}_question_{idx}"))
+
+                # FIX: Add type hint here as well
+                combined_q_vector: dict[str, Any] = {
+                    "": q_vector,
+                }
+
+                if unit.question_sparse_vectors and idx < len(unit.question_sparse_vectors):
+                    q_sparse_dict = unit.question_sparse_vectors[idx]
+
+                    if q_sparse_dict and q_sparse_dict.get("indices"):
+                        combined_q_vector["text-sparse"] = models.SparseVector(
+                            indices=q_sparse_dict["indices"],
+                            values=q_sparse_dict["values"]
+                        )
+
                 points.append(
                     models.PointStruct(
                         id=question_id,
-                        vector=q_vector,
+                        vector=combined_q_vector,
                         payload={
                             "unit_id": unit.id,
                             "unit_type": unit.unit_type.value,

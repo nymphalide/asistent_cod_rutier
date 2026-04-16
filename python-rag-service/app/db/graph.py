@@ -92,7 +92,9 @@ class Neo4jRepository:
         MERGE (n:LawUnit {id: row.id})
         SET n.unit_type = row.unit_type
         """
-        await tx.run(query, batch=data)
+        # Execute query AND fully consume the cursor to release the lock immediately
+        result = await tx.run(query, batch=data)
+        await result.consume()
 
     async def _upsert_concepts(self, tx: AsyncTransaction, data: List[Dict[str, Any]]) -> None:
         query = """

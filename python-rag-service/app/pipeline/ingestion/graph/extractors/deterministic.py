@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.graph import ReferenceEdge, ExternalLawNode, RefersToExternalEdge
+from app.core.patterns import SingletonMeta
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class DeterministicResult(BaseModel):
 # STRATEGY PATTERN: REGEX PARSING
 # ==========================================
 
-class DeterministicExtractor:
+class DeterministicExtractor(metaclass=SingletonMeta):
     """
     Parses legal text to deterministically build the Layer 1
     structural Knowledge Graph skeleton.

@@ -1,4 +1,4 @@
-import procrastinate
+import procrastinate # type: ignore
 from app.core.config import settings
 
 # Infrastructure Layer: Set up the DSN

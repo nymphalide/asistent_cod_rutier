@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 from sklearn.cluster import HDBSCAN
 from collections import Counter
 from pydantic import BaseModel, Field
+from app.core.patterns import SingletonMeta
 
 from app.schemas.graph import (
     RawEntity, ConceptNode, CategoryNode, MentionsEdge, BelongsToEdge
@@ -23,7 +24,7 @@ class ClusteringResult(BaseModel):
     belongs_to_edges: List[BelongsToEdge] = Field(default_factory=list)
 
 
-class ClusteringEngine:
+class ClusteringEngine(metaclass=SingletonMeta):
     """
     Implements Entity Resolution.
     Relies on the Singleton LLMGateway for safe embedding generation.

@@ -22,7 +22,7 @@ class IngestionService:
         self.pg_session = pg_session
         self.pg_repo = LawUnitRepository(self.pg_session)
 
-    async def process_directory(self, raw_data_dir: str) -> None:
+    async def process_directory(self, raw_data_dir: str, trigger_tasks: bool = True) -> None:
         logger.info(f"--- Starting Ingestion from: {raw_data_dir} ---")
 
         if not os.path.exists(raw_data_dir):
@@ -54,21 +54,20 @@ class IngestionService:
             # Upsert relational data
             await self.pg_repo.bulk_upsert(batch)
 
-            unit_ids = [u.id for u in batch]
+            if trigger_tasks:
+                unit_ids = [u.id for u in batch]
 
-            # Command Pattern: Defer the async task to the Procrastinate queue
-            # Task A: The Semantic Path (Ollama + Qdrant -> Slow, Stable)
-            await task_app.configure_task(
-                name="ingest_vectors_batch",
-                task_kwargs={"unit_ids": unit_ids}
-            ).defer_async()
+                await task_app.configure_task(
+                    name="ingest_vectors_batch",
+                    task_kwargs={"unit_ids": unit_ids}
+                ).defer_async()
 
-            # Task B: The Structural Path (GLiNER + HDBSCAN + Neo4j -> Fast, Volatile)
-            await task_app.configure_task(
-                name="ingest_graph_batch",
-                task_kwargs={"unit_ids": unit_ids}
-            ).defer_async()
-
-            logger.info(f"Scheduled decoupled Vector and Graph tasks for batch of {len(batch)} units.")
+                await task_app.configure_task(
+                    name="ingest_graph_batch",
+                    task_kwargs={"unit_ids": unit_ids}
+                ).defer_async()
+                logger.info(f"Scheduled decoupled Vector and Graph tasks for batch of {len(batch)} units.")
+            else:
+                logger.info(f"Postgres-only mode: Skipped background tasks for {len(batch)} units.")
 
         logger.info("Ingestion complete. Background workers will handle AI enrichment.")

@@ -2,7 +2,13 @@ import torch
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, PostgresDsn, validator
 from typing import Optional
+from pathlib import Path
+from pydantic_settings import BaseSettings
 
+
+
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_DIR.parent.parent
 
 class Settings(BaseSettings):
     """
@@ -11,7 +17,7 @@ class Settings(BaseSettings):
     """
     PROJECT_NAME: str = "Optimised Romanian Traffic Code RAG"
     # --- File Paths ---
-    RAW_DATA_DIR: str = "data/raw_text"
+    RAW_DATA_DIR: str = str(PROJECT_ROOT / "data" / "raw_text")
 
     # --- Databases (No defaults here forces them to be in .env) ---
     DATABASE_URL: str = Field(validation_alias="PYTHON_DATABASE_URL")

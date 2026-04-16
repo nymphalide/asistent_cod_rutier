@@ -39,6 +39,14 @@ class LawUnitEnriched(LawUnitCreate):
         default=None,
         description="List of dense embeddings, mapping 1:1 to hypothetical_questions"
     )
+    sparse_vector: Optional[Dict[str, list]] = Field(
+        default=None,
+        description="BM25 sparse weights {'indices': [...], 'values': [...]}"
+    )
+    question_sparse_vectors: Optional[List[Dict[str, list]]] = Field(
+        default=None,
+        description="List of sparse weights, mapping 1:1 to hypothetical_questions"
+    )
 
 # 4. Response DTO (Output)
 # Used by the API to READ data (in the future will be sent to the spring application)
