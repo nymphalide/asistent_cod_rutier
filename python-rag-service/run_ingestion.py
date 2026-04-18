@@ -2,10 +2,11 @@ import asyncio
 import os
 import logging
 
-from app.core.config import settings
-from app.db.session import AsyncSessionLocal
-from app.pipeline.ingestion import IngestionService
-from app.core.worker_app import task_app  # IMPORTĂM task_app aici
+from src.app.core.config import settings
+from src.app.db.session import AsyncSessionLocal
+from src.app.core.worker_app import task_app
+
+from src.app.pipeline.ingestion.orchestrator import IngestionService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

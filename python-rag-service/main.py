@@ -1,9 +1,7 @@
 import torch
 from fastapi import FastAPI
-from app.core.config import settings
-from app.db import engine, Base
-from app.db import models
-
+from src.app.core.config import settings
+from src.app.db.session import engine, Base
 
 app = FastAPI(title=settings.PROJECT_NAME)
 

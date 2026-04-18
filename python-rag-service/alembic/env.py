@@ -1,5 +1,3 @@
-import os
-import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -8,10 +6,8 @@ from sqlalchemy import pool
 from alembic import context # type: ignore
 
 # 2. Import your App Settings and Models
-from app.core.config import settings
-from app.db.session import Base
-from app.db.models import LawUnit # Explicitly import models to register them!
-
+from src.app.core.config import settings
+from src.app.db.session import Base
 # --- CUSTOM CONFIGURATION END ---
 
 # this is the Alembic Config object, which provides

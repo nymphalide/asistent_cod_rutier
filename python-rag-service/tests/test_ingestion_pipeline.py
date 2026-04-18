@@ -7,10 +7,10 @@ from sqlalchemy import select, func
 # 1. Setup the Python Path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.pipeline.ingestion import run_ingestion_pipeline
-from app.db.session import AsyncSessionLocal
-from app.db.models import LawUnit
-from app.core.custom_types import UnitType
+from src.app.pipeline.ingestion import run_ingestion_pipeline
+from src.app import AsyncSessionLocal
+from src.app import LawUnit
+from src.app import UnitType
 
 RAW_DATA_DIR = "data/raw_text"
 

@@ -6,33 +6,33 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# 1. System dependencies
+# 1. System dependencies & uv installation
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     python3-dev \
     python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install uv
 
 WORKDIR /app
 
-# 2. HEAVY LAYER: Install PyTorch FIRST and cache this layer
-# We remove --no-cache-dir temporarily so if it fails, pip can resume the download
-# increased default timeout prevents pip from dropping large file downloads
-RUN pip3 install --default-timeout=1000 torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu121
+# 2. HEAVY LAYER: Bulletproof PyTorch Install using uv (Core Only)
+# --system tells uv to install globally since we are inside a container
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system torch --index-url https://download.pytorch.org/whl/cu121
 
-# 3. LIGHT LAYER: Copy requirements and install the rest
+# 3. LIGHT LAYER: Cached Requirements Install
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -r requirements.txt
 
 # 4. Copy the rest of the application
 COPY . .
 
-# 5. Install the developer CLI tool as an editable package
-# This makes the 'rag' command globally available within the container
-RUN pip3 install -e .
+# 5. Install the developer CLI tool
+RUN uv pip install --system -e .
 
-# Port for FastAPI
 EXPOSE 8000
 
-# Default command (will be overridden by Docker Compose for the worker)
-CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Exec ensures Python is PID 1 to receive termination signals
+CMD ["exec", "python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

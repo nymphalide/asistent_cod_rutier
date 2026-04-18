@@ -11,7 +11,7 @@
 
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import AsyncSessionLocal
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency that provides an async database session per request.
@@ -23,11 +23,8 @@ and rolls back on any exception."""
 # FILE: app/clients/llm_gateway.py
 # ============================================================
 
-import asyncio
 from typing import List, Optional
-from ollama import AsyncClient
-from app.core.config import settings
-from app.core.ai_registry import ModelRegistry
+
 
 class LLMGateway:
     """
@@ -92,9 +89,8 @@ class ModelRegistry:
 # FILE: app/core/config.py
 # ============================================================
 
-import torch
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, PostgresDsn, validator
+from pydantic_settings import SettingsConfigDict
+from pydantic import Field
 from typing import Optional
 from pathlib import Path
 from pydantic_settings import BaseSettings
@@ -146,7 +142,7 @@ class UnitType(str, Enum):
 # ============================================================
 
 import procrastinate
-from app.core.config import settings
+from src.app import settings
 dsn = settings.DATABASE_URL.replace('+asyncpg', '')
 task_app = procrastinate.App(connector=procrastinate.PsycopgConnector(conninfo=dsn), import_paths=['app.pipeline.ingestion.tasks'])
 
@@ -157,7 +153,7 @@ task_app = procrastinate.App(connector=procrastinate.PsycopgConnector(conninfo=d
 import logging
 from typing import List, Dict, Any
 from neo4j import AsyncDriver, AsyncTransaction
-from app.schemas.graph import GraphPayload
+from src.app import GraphPayload
 logger = logging.getLogger(__name__)
 
 class Neo4jRepository:
@@ -216,12 +212,12 @@ Nodes MUST be created before Edges."""
 # ============================================================
 
 from typing import Optional, List, Any, Dict
-from sqlalchemy import String, Text, ForeignKey, Computed
+from sqlalchemy import String, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
-from app.db.session import Base
-from app.core.custom_types import UnitType
-from app.core.config import settings
+from src.app import Base
+from src.app import UnitType
+
 
 class LawUnit(Base):
     """
@@ -246,11 +242,8 @@ class LawUnit(Base):
 
 from typing import List, Optional, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import case
-from app.db.models import LawUnit
-from app.schemas.law_unit import LawUnitCreate
+from src.app import LawUnit
+from src.app import LawUnitCreate
 
 class LawUnitRepository:
     """
@@ -283,7 +276,7 @@ schema into a SQLAlchemy model instance."""
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
-from app.core.config import settings
+from src.app import settings
 engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
 AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
 Base = declarative_base()
@@ -297,9 +290,8 @@ import logging
 from typing import List
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
-from app.core.config import settings
-from app.schemas.law_unit import LawUnitEnriched
-from app.core.ai_registry import ModelRegistry
+from src.app import LawUnitEnriched
+
 logger = logging.getLogger(__name__)
 NAMESPACE_RAG = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
 
@@ -340,14 +332,10 @@ from .repository import LawUnitRepository
 # FILE: app/pipeline/ingestion/enricher.py
 # ============================================================
 
-import json
 import logging
-import asyncio
-from typing import List, Optional
-from app.schemas.law_unit import LawUnitCreate, LawUnitEnriched
-from app.core.custom_types import UnitType
-from app.core.ai_registry import ModelRegistry
-from app.clients.llm_gateway import LLMGateway
+from typing import List
+from src.app import LawUnitCreate, LawUnitEnriched
+
 logger = logging.getLogger(__name__)
 
 class EnricherService:
@@ -373,9 +361,9 @@ class EnricherService:
 # ============================================================
 
 import re
-from typing import List, Optional, Dict, Any, Tuple
-from app.schemas.law_unit import LawUnitCreate
-from app.core.custom_types import UnitType
+from typing import List, Any, Tuple
+from src.app import LawUnitCreate
+
 
 class TrafficCodeParser:
     REGEX_CHAPTER = re.compile('^(CAPITOLUL|TITLUL)\\s+([IVXLCDM]+)(?::\\s*(.*))?', re.IGNORECASE)
@@ -407,23 +395,15 @@ class TrafficCodeParser:
 
 import logging
 import signal
-import asyncio
-import sys
 from typing import List
 from qdrant_client import AsyncQdrantClient
 from neo4j import AsyncGraphDatabase
-from app.core.worker_app import task_app
-from app.core.config import settings
-from app.db.session import AsyncSessionLocal
-from app.db.repository import LawUnitRepository
-from app.db.vector import QdrantRepository
-from app.db.graph import Neo4jRepository
-from app.pipeline.ingestion.enricher import EnricherService
-from app.pipeline.ingestion.graph.orchestrator import GraphOrchestrator
-from app.pipeline.ingestion.graph.extractors.deterministic import DeterministicExtractor
-from app.pipeline.ingestion.graph.extractors.semantic import SemanticExtractor
-from app.pipeline.ingestion.graph.clustering import ClusteringEngine
-from app.schemas.law_unit import LawUnitCreate
+from src.app import task_app
+from src.app import settings
+from src.app.pipeline.ingestion.graph import DeterministicExtractor
+from src.app.pipeline.ingestion.graph.extractors.semantic import SemanticExtractor
+from src.app.pipeline.ingestion.graph import ClusteringEngine
+
 logger = logging.getLogger(__name__)
 GLOBAL_DETERMINISTIC_EXTRACTOR = DeterministicExtractor()
 GLOBAL_SEMANTIC_EXTRACTOR = SemanticExtractor()
@@ -455,15 +435,9 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 # FILE: app/pipeline/ingestion/__init__.py
 # ============================================================
 
-import os
-import glob
 import logging
-from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.schemas.law_unit import LawUnitCreate
-from app.pipeline.ingestion.parser import TrafficCodeParser
-from app.db.repository import LawUnitRepository
-from app.core.worker_app import task_app
+
 logger = logging.getLogger(__name__)
 
 class IngestionService:
@@ -483,15 +457,11 @@ class IngestionService:
 # ============================================================
 
 import logging
-import asyncio
 import numpy as np
-from typing import List, Dict, Any
-from sklearn.cluster import HDBSCAN
-from collections import Counter
+from typing import List
 from pydantic import BaseModel, Field
-from app.schemas.graph import RawEntity, ConceptNode, CategoryNode, MentionsEdge, BelongsToEdge
-from app.core.ai_registry import ModelRegistry
-from app.clients.llm_gateway import LLMGateway
+from src.app import RawEntity, ConceptNode, CategoryNode, MentionsEdge, BelongsToEdge
+
 logger = logging.getLogger(__name__)
 
 class ClusteringResult(BaseModel):
@@ -525,12 +495,11 @@ class ClusteringEngine:
 
 import logging
 from typing import List
-from app.schemas.graph import GraphPayload, LawUnitNode, PartOfEdge
-from app.db.graph import Neo4jRepository
-from app.pipeline.ingestion.graph.extractors.deterministic import DeterministicExtractor
-from app.pipeline.ingestion.graph.extractors.semantic import SemanticExtractor
-from app.pipeline.ingestion.graph.clustering import ClusteringEngine
-from app.db.models import LawUnit
+from src.app.db.graph import Neo4jRepository
+from src.app.pipeline.ingestion.graph import DeterministicExtractor
+from src.app.pipeline.ingestion.graph.extractors.semantic import SemanticExtractor
+from src.app.pipeline.ingestion.graph import ClusteringEngine
+from src.app import LawUnit
 logger = logging.getLogger(__name__)
 
 class GraphOrchestrator:
@@ -560,7 +529,7 @@ import re
 import logging
 from typing import Optional
 from pydantic import BaseModel, Field
-from app.schemas.graph import ReferenceEdge, ExternalLawNode, RefersToExternalEdge
+from src.app import ReferenceEdge, ExternalLawNode, RefersToExternalEdge
 logger = logging.getLogger(__name__)
 
 class DeterministicResult(BaseModel):
@@ -601,17 +570,12 @@ Example: 'art_102_alin_3_lit_a' -> 'art_102'"""
 # FILE: app/pipeline/ingestion/graph/extractors/semantic.py
 # ============================================================
 
-import os
-import json
 import logging
-import asyncio
 from typing import List
 from gliner import GLiNER
-import threading
-from app.schemas.graph import RawEntity
-from app.db.models import LawUnit
-from app.core.config import settings
-from app.core.ai_registry import ModelRegistry
+from src.app import RawEntity
+from src.app import LawUnit
+
 logger = logging.getLogger(__name__)
 
 class SemanticExtractor:
@@ -645,7 +609,7 @@ Ensures thread-safe Singleton initialization for the GLiNER model."""
 
 from typing import List, Set
 from pydantic import BaseModel, Field
-from app.core.custom_types import UnitType
+from src.app import UnitType
 
 class RawEntity(BaseModel):
     """
@@ -735,10 +699,9 @@ class GraphPayload(BaseModel):
 # FILE: app/schemas/law_unit.py
 # ============================================================
 
-from enum import Enum
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, ConfigDict, Field
-from app.core.custom_types import UnitType
+from src.app import UnitType
 
 class LawUnitBase(BaseModel):
     id: str = Field(..., description="Canonical ID (e.g., 'art_102_alin_2')")

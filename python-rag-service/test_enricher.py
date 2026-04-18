@@ -1,8 +1,8 @@
 import asyncio
 import json
-from app.schemas.law_unit import LawUnitCreate
-from app.core.custom_types import UnitType
-from app.pipeline.ingestion.enricher import EnricherService
+from src.app import LawUnitCreate
+from src.app import UnitType
+from src.app import EnricherService
 
 
 async def run_test():

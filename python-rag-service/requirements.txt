@@ -21,6 +21,7 @@ neo4j                   # Neo4j Graph Database driver
 # --- AI & Extractors (Strategy Pattern) ---
 ollama                  # Local LLM Gateway for Embeddings & Chat
 gliner                  # Semantic Entity Extractor
+fastembed               # Generates BM25 Sparse Vectors locally for Qdrant
 scikit-learn>=1.3.0     # Required for HDBSCAN clustering engine
 numpy                   # Explicitly required for HDBSCAN matrix math
 

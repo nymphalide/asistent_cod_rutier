@@ -5,7 +5,6 @@ version: '3.8'
 # ==========================================
 x-python-base: &python-base
   build: ./python-rag-service
-  image: traffic-rag-core:latest
   depends_on:
     db-python:
       condition: service_healthy
@@ -26,12 +25,12 @@ x-python-base: &python-base
     OLLAMA_HOST: http://host.docker.internal:11434 
   volumes:
     - ./python-rag-service/data:/app/data
-    - ./python-rag-service/app:/app/app
+    - ./python-rag-service/src/app:/app/src/app
     - ./python-rag-service/main.py:/app/main.py
     - ./python-rag-service/cache:/app/cache
-    - ./python-rag-service/cli:/app/cli
-    - /app/app/__pycache__
-    - /app/app/.idea
+    - ./python-rag-service/src/cli:/app/src/cli
+    - /app/src/app/__pycache__
+    - /app/.idea
   deploy:
     resources:
       reservations:
@@ -98,8 +97,8 @@ services:
     <<: *python-base
     container_name: python-rag-service
     command: >
-      bash -c "procrastinate --app=app.core.worker_app.task_app schema --apply && 
-      python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+      sh -c "python3 -m procrastinate --app=src.app.core.worker_app.task_app schema --apply || echo 'Procrastinate schema already exists, skipping...' && 
+      exec python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "${PYTHON_API_PORT}:8000"
 
@@ -107,11 +106,7 @@ services:
     <<: *python-base
     container_name: python-rag-worker
     command: >
-      watchmedo auto-restart 
-      --directory=./app 
-      --pattern=*.py 
-      --recursive 
-      -- procrastinate --app=app.core.worker_app.task_app worker
+      sh -c "exec watchmedo auto-restart --directory=./src/app --pattern=*.py --recursive -- python3 -m procrastinate --app=src.app.core.worker_app.task_app worker"
 
 volumes:
   spring_db_data:
